@@ -23,6 +23,6 @@ public class AndroidLauncher extends AndroidApplication {
 				this.requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},WRITE_REQUEST_CODE);
 			}
 		}
-		initialize(new BeatFeetGame(new AndroidPlatformListener(this), true, new AndroidFileChooser(this)), config);
+		initialize(new BeatFeetGame(new AndroidPlatformListener(this), true), config);
 	}
 }

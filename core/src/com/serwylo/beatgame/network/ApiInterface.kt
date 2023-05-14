@@ -1,7 +1,10 @@
 package com.example.restapiidemo.network
 
+import com.music.waves.model.entity.LeaderboardALTER
+import com.serwylo.beatgame.network.data.LeaderboardModel
 import com.serwylo.beatgame.network.data.Message
 import com.serwylo.beatgame.network.data.RegModel
+import com.serwylo.beatgame.network.data.TrackModel
 import retrofit2.Call
 import retrofit2.http.*
 
@@ -17,14 +20,26 @@ interface ApiInterface {
 //    @DELETE("posts/{id}")
 //    fun deletePost(@Path("id") id:Int):Call<String>
 
-    @GET("api/player/is_exist")
-    fun getTest(@Query("login") login:String): Call<Message?>
+    @GET("api/leaderboard/show")
+    fun getRecords(@Query("title") title:String): Call<List<LeaderboardALTER?>>
+
+    @GET("api/track/show")
+    fun getTracks(@Query("title") title:String): Call<List<TrackModel?>>
+
+    @GET("api/track/is_exist")
+    fun getTrackID(@Query("title") title:String): Call<Message?>
 
     @GET("api/player/login")
-    fun getTest2(@Query("login") login:String, @Query("password") password:String): Call<Message?>
+    fun loginUser(@Query("login") login:String , @Query("password") password:String): Call<Message?>
 
     @POST("api/player/sing_up")
     fun registerUser(@Body data: RegModel?): Call<Message?>?
+
+    @POST("api/track/create")
+    fun createTrack(@Body data: TrackModel?): Call<Message?>?
+
+    @POST("api/leaderboard/create")
+    fun createRecord(@Body data: LeaderboardModel?): Call<Message?>?
 
     @GET("api/player/reset_pas")
     fun resetPass(@Query("email") email:String): Call<Message?>

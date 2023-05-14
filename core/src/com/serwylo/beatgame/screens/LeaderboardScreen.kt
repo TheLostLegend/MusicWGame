@@ -3,25 +3,21 @@ package com.serwylo.beatgame.screens
 import com.badlogic.gdx.*
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.*
-import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.utils.Align
+import com.example.restapiidemo.network.RetrofitClient
+import com.music.waves.model.entity.LeaderboardALTER
 import com.serwylo.beatgame.BeatFeetGame
-import com.serwylo.beatgame.audio.customMp3
 import com.serwylo.beatgame.levels.Level
-import com.serwylo.beatgame.levels.Levels
 import com.serwylo.beatgame.levels.achievements.loadAllAchievements
-import com.serwylo.beatgame.levels.loadHighScore
-import com.serwylo.beatgame.ui.UI_SPACE
-import com.serwylo.beatgame.ui.makeHeading
-import com.serwylo.beatgame.ui.makeIcon
-import com.serwylo.beatgame.ui.makeStage
-import java.io.File
+import com.serwylo.beatgame.ui.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 
-class LevelSelectScreen(private val game: BeatFeetGame): ScreenAdapter() {
+class LeaderboardScreen(private val game: BeatFeetGame): ScreenAdapter() {
 
     private val stage = makeStage()
 
@@ -54,6 +50,8 @@ class LevelSelectScreen(private val game: BeatFeetGame): ScreenAdapter() {
         val container = VerticalGroup().apply {
             space(UI_SPACE)
             padTop(UI_SPACE * 2)
+            setWidth(width)
+
         }
 
         val scrollPane = ScrollPane(container, skin).apply {
@@ -61,34 +59,54 @@ class LevelSelectScreen(private val game: BeatFeetGame): ScreenAdapter() {
             setScrollingDisabled(true, false)
             setupOverscroll(width / 4, 30f, 200f)
         }
+        val table = Table().apply {
+            pad(UI_SPACE)
+        }
+        val searchBar = makeTextField(strings["leaderboard-menu.text.search"], game.assets.getSkin(), width)
+        val searchButton = makeButton(strings["leaderboard-menu.text.searchBT"], styles) { fill(searchBar.text.toString(), table, width, height) }
 
         stage.addActor(scrollPane)
 
         container.addActor(
-            makeHeading(strings["level-select.title"], sprites.logo, styles, strings) {
+            makeHeading(strings["leaderboard.title"], sprites.logo, styles, strings) {
                 game.showMenu()
             }
         )
+        //container.addActor(searchBar)
+        //stage.addActor(searchButton)
 
-        val table = Table().apply {
+
+
+        val table2 = Table().apply {
             pad(UI_SPACE)
         }
+        table2.add(searchBar).width(width*5/6)
+        table2.add(searchButton).width(width*1/6)
 
+
+        container.addActor(table2)
+        fill(searchBar.text.toString(), table, width, height)
         container.addActor(table)
 
-        Levels.all.forEachIndexed { i, level ->
+    }
 
-            if (i % levelsPerRow == 0) {
-                table.row()
-                y ++
-                x = 0
+    fun fill(string: String, table: Table, width:Float, height:Float){
+        table.clear()
+        RetrofitClient.instance?.getMyApi()?.getRecords(string)?.enqueue(object : Callback<List<LeaderboardALTER?>> {
+            override fun onResponse(
+                call: Call<List<LeaderboardALTER?>> ,
+                response: Response<List<LeaderboardALTER?>>
+            ) {
+                val list: List<LeaderboardALTER?>?=response.body()
+                (list as ArrayList<LeaderboardALTER>?)?.forEachIndexed { i , level ->
+                    table.row()
+                    table.add(makeButton(level.playerLogin + "   " + level.trackName + "   " +level.score, game.assets.getStyles()){}).width(width)
+                }
             }
-
-            table.add(makeButton(level)).width(width).height(height)
-
-            x ++
-
-        }
+            override fun onFailure(call: Call<List<LeaderboardALTER?>> , t: Throwable) {
+                call.cancel()
+            }
+        })
 
     }
 
@@ -142,11 +160,6 @@ class LevelSelectScreen(private val game: BeatFeetGame): ScreenAdapter() {
 
         val button = Button(skin, buttonStyle).apply {
             setFillParent(true)
-            addListener(object: ChangeListener() {
-                override fun changed(event: ChangeEvent?, actor: Actor?) {
-                    onLevelSelected(level)
-                }
-            })
         }
 
         val labelString = strings[level.labelId]
@@ -165,65 +178,12 @@ class LevelSelectScreen(private val game: BeatFeetGame): ScreenAdapter() {
             add(levelLabel).expand().fill().colspan(4)
         }
 
-        val highScore = loadHighScore(level)
-
-        if (highScore.exists()) {
-
-            val distanceLabel = Label(highScore.distancePercentString(), styles.label.large)
-            val scoreLabel = Label(highScore.points.toString(), styles.label.large)
-
-            val distanceIcon = makeIcon(distanceTexture)
-            val scoreIcon = makeIcon(scoreTexture)
-
-            val iconSize = Value.percentWidth(1.0f)
-            val iconSpace = Value.percentWidth(0.2f)
-
-            table.row()
-            table.add(distanceIcon).spaceRight(iconSpace).size(iconSize)
-            table.add(distanceLabel)
-            table.add(scoreIcon).spaceLeft(iconSpace).spaceRight(iconSpace).size(iconSize)
-            table.add(scoreLabel).expandX().left()
-
-        }
 
         return WidgetGroup(button, table)
 
     }
 
-    fun onLevelSelected(level: Level): Boolean {
-        if (level.mp3Name == "custom.mp3") {
-            val file = customMp3()
-            if (!file.exists()) {
-                game.explainCustomSongs()
-            } else {
-                game.showChoice(file)
-            }
-//            val conf=NativeFileChooserConfiguration()
-//            conf.directory=Gdx.files.absolute(System.getProperty("user.home"))
-//            conf.mimeFilter="audio/*"
-//            conf.nameFilter = FilenameFilter { dir , name -> name.endsWith("mp3") }
-//            conf.title="Choose audio file"
 
-//            fileChooser.chooseFile(conf , object : NativeFileChooserCallback {
-//                override fun onFileChosen(file: FileHandle) {
-//                    // Do stuff with file, yay!
-//                }
-//
-//                override fun onCancellation() {
-//                    // Warn user how rude it can be to cancel developer's effort
-//                }
-//
-//                override fun onError(exception: Exception) {
-//                    // Handle error (hint: use exception type)
-//                }
-//            }
-//            )
-        } else {
-            game.changeTrack("songs${File.separator}mp3${File.separator}${level.mp3Name}", strings[level.labelId])
-        }
-
-        return true
-    }
 
 }
 

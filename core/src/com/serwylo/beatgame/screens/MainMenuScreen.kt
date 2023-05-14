@@ -3,14 +3,15 @@ package com.serwylo.beatgame.screens
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.ScreenAdapter
-import com.badlogic.gdx.assets.AssetManager
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.GlyphLayout
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
-import com.badlogic.gdx.scenes.scene2d.ui.*
-import com.badlogic.gdx.scenes.scene2d.utils.Layout
+import com.badlogic.gdx.scenes.scene2d.actions.Actions
+import com.badlogic.gdx.scenes.scene2d.ui.Button
+import com.badlogic.gdx.scenes.scene2d.ui.Label
+import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.ui.VerticalGroup
 import com.badlogic.gdx.utils.Align
-import com.serwylo.beatgame.Assets
 import com.serwylo.beatgame.BeatFeetGame
 import com.serwylo.beatgame.ui.*
 import kotlin.properties.Delegates
@@ -23,6 +24,10 @@ class MainMenuScreen(private val game: BeatFeetGame): ScreenAdapter() {
     private lateinit var testButton: Button
     var login by Delegates.notNull<Int>()
     var layout:GlyphLayout
+    private val fuel = game.assets.getSprites().barrel_b
+    private var amount = 3
+    private var last:Long = 0
+    var path=Gdx.files.localStoragePath
 
     init {
         val sprites = game.assets.getSprites()
@@ -30,10 +35,23 @@ class MainMenuScreen(private val game: BeatFeetGame): ScreenAdapter() {
         val strings = game.assets.getStrings()
         layout = GlyphLayout()
 
+        amount = game.prefs.getString("fuel").toInt()
+        last = game.prefs.getString("time").toLong()
+
         val container = VerticalGroup().apply {
             setFillParent(true)
             align(Align.center)
             space(UI_SPACE)
+        }
+
+        while (amount < 3 && System.currentTimeMillis() - 300000 >= last){
+            var check = System.currentTimeMillis()
+            amount++
+            last += 300000
+            game.prefs.putString("fuel", amount.toString())
+            game.prefs.flush()
+            game.prefs.putString("time", System.currentTimeMillis().toString())
+            game.prefs.flush()
         }
 
         login = game.prefs.getString("login").toInt()
@@ -48,10 +66,40 @@ class MainMenuScreen(private val game: BeatFeetGame): ScreenAdapter() {
         val bottomTable = Table()
         bottomTable.setFillParent(true)
         bottomTable.bottom().padBottom(30f);
-        val playButton = makeLargeButton(strings["main-menu.btn.play"], styles) { game.loadGame(Gdx.files.internal(game.prefs.getString("musicFile")), game.prefs.getString("songName"), game.prefs.getString("selectedShip"))  }
+
+        val noFuel = Label("No Fuel?", styles.label.medium).apply {
+            setAlignment(Align.center)
+            color = color.cpy().apply { a = 0f }
+        }
+
+        val playButton = makeLargeButton(strings["main-menu.btn.play"], styles) {
+            if (amount <= 0){
+                //game.toastLong("Not enough fuel");
+            }
+            else {
+                amount -=1
+                game.prefs.putString("fuel", amount.toString())
+                game.prefs.flush()
+                if (amount == 2){
+                    var check = System.currentTimeMillis().toString()
+                    game.prefs.putString("time", check)
+                    game.prefs.flush()
+                }
+                game.loadGame(Gdx.files.internal(game.prefs.getString("musicFile")), game.prefs.getString("songName"), game.prefs.getString("selectedShip"))
+            }
+            noFuel.clearActions()
+            noFuel.addAction(
+                Actions.sequence(
+                    Actions.alpha(0f) ,
+                    Actions.fadeIn(0.1f) ,
+                    Actions.delay(1f) ,
+                    Actions.fadeOut(0.8f)
+                )
+            )
+        }
         val songsButton = makeLargeButton(strings["main-menu.btn.songs"], styles) { game.showLevelSelectMenu() }
         val shipButton = makeLargeButton(strings["main-menu.btn.ship"], styles) { game.showShipSelectMenu() }
-        val lbButton = makeLargeButton(strings["main-menu.btn.leaderboards"], styles) { game.showLevelSelectMenu() }
+        val lbButton = makeLargeButton(strings["main-menu.btn.leaderboards"], styles) { game.showLeaderboards() }
         val loginButton = makeLargeButton(strings["main-menu.btn.login"], styles) { game.showLoginMenu() }
         val logoutButton = makeLargeButton(strings["main-menu.btn.logout"], styles) {
             game.prefs.putString("login", "0")
@@ -60,6 +108,7 @@ class MainMenuScreen(private val game: BeatFeetGame): ScreenAdapter() {
         }
 
         bottomTable.apply {
+            add(noFuel).center()
             row()
             add(playButton).apply {
                 fillX()
@@ -151,6 +200,28 @@ class MainMenuScreen(private val game: BeatFeetGame): ScreenAdapter() {
         }
         var styles = game.assets.getStyles()
         batch.begin();
+
+        //makeIcon(fuel)
+
+        amount = game.prefs.getString("fuel").toInt()
+        last = game.prefs.getString("time").toLong()
+
+        styles.label.large.font.draw(batch, (amount.toString() + " / 3"), 30f, Gdx.graphics.height.toFloat()-30) // выводим текст на экран в координатах (x,y)
+        if (amount<3 && System.currentTimeMillis() - 300000 >= last){
+            amount++
+            game.prefs.putString("fuel", amount.toString())
+            game.prefs.flush()
+            game.prefs.putString("time", System.currentTimeMillis().toString())
+            game.prefs.flush()
+        }
+        if (amount<3){
+            var seconds = (System.currentTimeMillis() - 300000 - last )/1000 * -1
+            var minutes = seconds/60
+            var e = ""
+            seconds%=60
+            if (seconds<=9) e = "0"
+            styles.label.large.font.draw(batch, "$minutes:$e$seconds" , 190f, Gdx.graphics.height.toFloat()-30)
+        }
         styles.label.large.font.draw(batch, layout, x, 30F);
         batch.end();
         stage.draw()

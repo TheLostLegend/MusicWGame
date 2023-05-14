@@ -10,10 +10,6 @@ fun calcDensityScaleFactor(): Float {
     return ((Gdx.graphics.density - 1) * 0.8f).coerceAtLeast(1f)
 }
 
-/**
- * https://github.com/libgdx/libgdx/blob/master/tests/gdx-tests/src/com/badlogic/gdx/tests/ParallaxTest.java
- * http://www.apache.org/licenses/LICENSE-2.0
- */
 class ParallaxCamera(viewportWidth: Float, viewportHeight: Float) : OrthographicCamera(viewportWidth, viewportHeight) {
 
     var parallaxView = Matrix4()

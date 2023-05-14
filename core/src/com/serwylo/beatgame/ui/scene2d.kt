@@ -44,8 +44,9 @@ fun makeSmallButton(label: String, styles: Assets.Styles, onClick: () -> Unit): 
     }
 }
 
-fun makeTextField(label: String, skin: Skin): TextField {
+fun makeTextField(label: String, skin: Skin, width:Float): TextField {
     var textf = TextField(label, skin)
+    textf.width = width
     return textf
 }
 

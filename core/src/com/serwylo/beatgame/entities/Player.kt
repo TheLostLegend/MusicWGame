@@ -226,10 +226,6 @@ class Player(
             score.increaseMultiplier()
             lastMultiplerTime = Globals.animationTimer
             if (score.getMultiplier() >= MIN_MULTIPLIER_FOR_RAINBOW) {
-
-//                jumpParticles.emitters.forEach {
-//                it.setPosition(position.x + WIDTH / 2, position.y) }
-//                jumpParticles.update(delta)
                 jumpParticles.emitters.forEach {
                     it.emission.highMin = (score.getMultiplier() - MIN_MULTIPLIER_FOR_RAINBOW) * 10
                     it.emission.highMax = (score.getMultiplier() - MIN_MULTIPLIER_FOR_RAINBOW) * 15
@@ -237,7 +233,6 @@ class Player(
                     it.maxParticleCount = ((score.getMultiplier() - MIN_MULTIPLIER_FOR_RAINBOW) * 25).toInt()
                 }
                 jumpParticles.start()
-
                 val increaseJumpPower = ((score.getMultiplier() - MIN_MULTIPLIER_FOR_RAINBOW) * SHIELD_EARNED_PER_JUMP).coerceAtMost(SHIELD_MAX_INCREASE).toInt()
                 shield = (shield + increaseJumpPower).coerceAtMost(armor)
             }

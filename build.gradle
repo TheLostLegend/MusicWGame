@@ -80,8 +80,6 @@ project(":desktop") {
         api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
         api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
         api "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
-
-        implementation "games.spooky.gdx:gdx-nativefilechooser-desktop-lwjgl:2.1.0"
     }
 }
 
@@ -135,6 +133,8 @@ project(":core") {
         implementation 'com.squareup.retrofit2:converter-gson:2.7.2'
 
         implementation "games.spooky.gdx:gdx-nativefilechooser:2.1.0"
+
+        implementation "com.kotcrab.vis:vis-ui:1.5.1"
 
     }
 }

@@ -23,21 +23,34 @@ fun loadWorldFromMp3(musicFile: FileHandle): World {
         return precompiled
     }
 
-    val fromCache = loadFromCache(musicFile)
+
+    val fromCache = loadFromCache(customMp3())
     if (fromCache != null) {
         Gdx.app.debug(TAG, "Loaded world from cache")
         return fromCache
     }
 
     Gdx.app.debug(TAG, "No cached version of world, processing MP3 from disk and caching...")
-    val fromDisk = loadFromDisk(musicFile)
-    cacheWorld(musicFile, fromDisk)
+    val fromDisk = loadFromDisk(customMp3())
+    cacheWorld(customMp3(), fromDisk)
     return fromDisk
 
 }
 
 fun customMp3(): FileHandle {
-    return Gdx.files.external("BeatFeet${File.separator}custom.mp3")
+    var file = findFirstMp3File(Gdx.files.external("BeatFeet").file().absolutePath)
+    if (file == null)
+    return Gdx.files.external("BeatFeet${File.separator}your.mp3")
+    else {
+        return Gdx.files.external("BeatFeet" + file.absolutePath.toString().substringAfter("BeatFeet"))}
+}
+
+fun findFirstMp3File(directoryPath: String): File? {
+    val directory = File(directoryPath)
+    val mp3Files = directory.listFiles { file ->
+        file.isFile && file.extension.equals("mp3", ignoreCase = true)
+    }
+    return mp3Files?.firstOrNull()
 }
 
 fun loadFromDisk(musicFile: FileHandle): World {
@@ -46,10 +59,7 @@ fun loadFromDisk(musicFile: FileHandle): World {
 
     Gdx.app.debug(TAG, "Calculating FFT")
     lateinit var spectogram:FFTResultWithValues
-    if (musicFile != customMp3())
-        spectogram = calculateMp3FFTWithValues(customMp3().read())
-    else
-        spectogram = calculateMp3FFTWithValues(musicFile.read())
+    spectogram = calculateMp3FFTWithValues(musicFile.read())
     // val spectogram = smoothFFT(rawSpectogram, 13).toResult()
 
     Gdx.app.debug(TAG, "Extracting and smoothing features")
@@ -141,7 +151,7 @@ private fun loadPrecompiled(musicFile: FileHandle): World? {
 
 }
 
-private fun cacheWorld(musicFile: FileHandle, world: World) {
+fun cacheWorld(musicFile: FileHandle, world: World) {
 
     val file = getCacheFile(musicFile)
 
@@ -160,7 +170,7 @@ fun saveWorldToDisk(file: FileHandle, world: World) {
 
 private val CACHE_DIR = ".cache${File.separator}world"
 
-private fun getCacheFile(musicFile: FileHandle): FileHandle {
+fun getCacheFile(musicFile: FileHandle): FileHandle {
 
     val dir = Gdx.files.local(CACHE_DIR)
     if (!dir.exists()) {
@@ -177,7 +187,7 @@ private fun getCacheFile(musicFile: FileHandle): FileHandle {
 
 }
 
-private fun getPrecompiledFile(musicFile: FileHandle): FileHandle? {
+fun getPrecompiledFile(musicFile: FileHandle): FileHandle? {
 
     val name = musicFile.nameWithoutExtension()
     if (name == "custom") {
@@ -199,7 +209,7 @@ private fun getPrecompiledFile(musicFile: FileHandle): FileHandle? {
  * Once we decide to do something interesting with the heightmap, add it back to the constructor
  * and bump the version number.
  */
-private data class CachedWorldData(
+data class CachedWorldData(
         val duration: Int,
         val featuresLow: List<Feature>,
         val featuresMid: List<Feature>,

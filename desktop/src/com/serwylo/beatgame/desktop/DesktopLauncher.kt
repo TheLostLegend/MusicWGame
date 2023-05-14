@@ -18,6 +18,7 @@ fun main(arg: Array<String>) {
         config.width = 2148
         config.height = 1080
         config.title = "Beat Feet - Screenshots"
+        config.useGL30 = true;
         BeatFeetGameForScreenshots(verbose)
     } else {
         BeatFeetGame(DesktopPlatformListener(), verbose)

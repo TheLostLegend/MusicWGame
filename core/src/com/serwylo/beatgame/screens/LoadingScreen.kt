@@ -9,15 +9,22 @@ import com.badlogic.gdx.scenes.scene2d.ui.HorizontalGroup
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.VerticalGroup
 import com.badlogic.gdx.utils.Align
+import com.example.restapiidemo.network.RetrofitClient
+import com.google.gson.Gson
 import com.serwylo.beatgame.BeatFeetGame
-import com.serwylo.beatgame.audio.customMp3
-import com.serwylo.beatgame.audio.loadWorldFromMp3
+import com.serwylo.beatgame.audio.*
+import com.serwylo.beatgame.audio.features.World
 import com.serwylo.beatgame.levels.Levels
 import com.serwylo.beatgame.levels.loadHighScore
+import com.serwylo.beatgame.network.data.Message
+import com.serwylo.beatgame.network.data.TrackModel
 import com.serwylo.beatgame.ui.UI_SPACE
 import com.serwylo.beatgame.ui.makeHeading
 import com.serwylo.beatgame.ui.makeIcon
 import com.serwylo.beatgame.ui.makeStage
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class LoadingScreen(
     private val game: BeatFeetGame,
@@ -27,11 +34,13 @@ class LoadingScreen(
     ): ScreenAdapter() {
 
     private val stage = makeStage()
+    private val TAG = "Loading"
 
     private val level = Levels.bySong(musicFile.name())
     private val selectedShip = selectedShip
 
     init {
+        saveTrack(musicFile)
         val sprites = game.assets.getSprites()
         val styles = game.assets.getStyles()
         val strings = game.assets.getStrings()
@@ -71,7 +80,7 @@ class LoadingScreen(
 
         if (level === Levels.Custom) {
             container.addActor(
-                Label(customMp3().file().absolutePath, styles.label.small)
+                Label(customMp3().file().nameWithoutExtension, styles.label.small)
             )
         }
 
@@ -140,6 +149,52 @@ class LoadingScreen(
 
     companion object {
         private const val MIN_LOAD_TIME = 1000
+    }
+
+    private fun getTrackModel(musicFile: FileHandle): TrackModel? {
+
+        val file = getCacheFile(musicFile)
+        if (file == null || !file.exists()) {
+            // Could be the case for custom songs, or for when we are experimenting adding new songs.
+            Gdx.app.debug(TAG , "Precompiled file for world ${musicFile.path()} doesn't exist")
+            return null
+        }
+
+        try {
+            val json = file.readString()
+
+            val data = Gson().fromJson(json, CachedWorldData::class.java)
+
+            if (data.version != CachedWorldData.currentVersion) {
+                error("Precompiled world data is version ${data.version}, whereas we only know how to handle version ${CachedWorldData.currentVersion} with certainty. Perhaps we need to compile again using :song-extract:processSongs?")
+            }
+
+            return TrackModel(null, musicFile.nameWithoutExtension(), data.duration, json)
+
+        } catch (e: Exception) {
+            // Be pretty liberal at throwing away cached files here. That gives us the freedom to change
+            // the data structure if required without having to worry about if this will work or not.
+            throw RuntimeException("Error while reading precompiled world data for ${musicFile.path()}.", e)
+        }
+
+    }
+
+    private fun saveTrack(musicFile: FileHandle){
+        var track = getTrackModel(musicFile)
+        RetrofitClient.instance?.getMyApi()?.createTrack(track)?.enqueue(object :
+            Callback<Message?> {
+            override fun onResponse(call: Call<Message?> , response: Response<Message?>) {
+                if (response.isSuccessful) {
+                    //game.toastLong("yaaay");
+                } else {
+                    //game.toastLong("Incorrect Data");
+                }
+            }
+
+            override fun onFailure(call: Call<Message?>, t: Throwable) {
+                //game.toastLong("Check Internet Connection");
+            }
+        })
     }
 
 }

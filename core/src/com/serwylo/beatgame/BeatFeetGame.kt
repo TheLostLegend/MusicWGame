@@ -5,24 +5,32 @@ import com.badlogic.gdx.Game
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Preferences
 import com.badlogic.gdx.files.FileHandle
+import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.kotcrab.vis.ui.VisUI
 import com.serwylo.beatgame.audio.features.World
 import com.serwylo.beatgame.levels.Levels
 import com.serwylo.beatgame.screens.*
-import games.spooky.gdx.nativefilechooser.NativeFileChooser
+import com.serwylo.beatgame.ui.CustomToast
 import java.io.File
+import java.util.*
 
-open class BeatFeetGame(val platformListener: PlatformListener, private val verbose: Boolean, private val fileChooser: NativeFileChooser) : Game() {
+open class BeatFeetGame(val platformListener: PlatformListener, private val verbose: Boolean) : Game() {
 
     // Initialize this in the create() method so that we can access Gdx logging. Helps to diagnose
     // issues with asset loading if we can log meaningful messages.
     // See https://github.com/beat-feet/beat-feet/issues/97.
     lateinit var assets: Assets
     lateinit var prefs: Preferences
+    lateinit var toastFactory : CustomToast.ToastFactory
+    private val toasts: LinkedList<CustomToast> = LinkedList<CustomToast>()
+    lateinit var gl: GL20
 
     @Suppress("LibGDXLogLevel") // Optional flag to make more verbose.
     override fun create() {
+        VisUI.load()
+        gl = Gdx.graphics.gL20
         prefs = Gdx.app.getPreferences("My Preferences")
 
         if (verbose) {
@@ -49,6 +57,16 @@ open class BeatFeetGame(val platformListener: PlatformListener, private val verb
             prefs.putString("login", "0")
             prefs.flush()
         }
+        if (prefs.getString("fuel").equals("") or prefs.getString("time").equals("")){
+            prefs.putString("fuel", "3")
+            prefs.putString("time", "0")
+            prefs.flush()
+        }
+
+        toastFactory = CustomToast.ToastFactory.Builder()
+                .font(assets.getStyles().Labels().large.font)
+                .build()
+
         setScreen(MainMenuScreen(this))
     }
 
@@ -94,7 +112,7 @@ open class BeatFeetGame(val platformListener: PlatformListener, private val verb
 
     fun showLevelSelectMenu() {
         Gdx.app.postRunnable {
-            setScreen(LevelSelectScreen(this, fileChooser))
+            setScreen(LevelSelectScreen(this))
         }
     }
 
@@ -104,9 +122,43 @@ open class BeatFeetGame(val platformListener: PlatformListener, private val verb
         }
     }
 
+    fun showLeaderboards() {
+        Gdx.app.postRunnable {
+            setScreen(LeaderboardScreen(this))
+        }
+    }
+
+    fun showChoice(file: FileHandle) {
+        Gdx.app.postRunnable {
+            setScreen(GenerateCustomScreen(this, file))
+        }
+    }
+
+    open fun toastLong(text: String?) {
+        toasts.add(toastFactory.create(text , CustomToast.Length.LONG))
+    }
+    open fun toastShort(text: String?) {
+        toasts.add(toastFactory.create(text , CustomToast.Length.SHORT))
+    }
+
     fun explainCustomSongs() {
         Gdx.app.postRunnable {
             setScreen(ExplainCustomSongsScreen(this))
+        }
+    }
+
+    override fun render() {
+        super.render()
+
+        // handle toast queue and display
+        val it: MutableIterator<CustomToast> = toasts.iterator()
+        while (it.hasNext()) {
+            val t=it.next()
+            if (!t.render(Gdx.graphics.deltaTime)) {
+                it.remove() // toast finished -> remove
+            } else {
+                break // first toast still active, break the loop
+            }
         }
     }
 

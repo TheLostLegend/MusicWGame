@@ -3,22 +3,18 @@ package com.serwylo.beatgame.screens
 import com.badlogic.gdx.Application
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.ScreenAdapter
-import com.badlogic.gdx.assets.AssetManager
 import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.g2d.GlyphLayout
-import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.scenes.scene2d.ui.*
-import com.badlogic.gdx.scenes.scene2d.utils.Layout
 import com.badlogic.gdx.utils.Align
 import com.example.restapiidemo.network.RetrofitClient
-//import com.kotcrab.vis.ui.widget.toast.Toast
-import com.serwylo.beatgame.Assets
 import com.serwylo.beatgame.BeatFeetGame
 import com.serwylo.beatgame.network.data.Message
+import com.serwylo.beatgame.network.data.RegModel
 import com.serwylo.beatgame.ui.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.security.Timestamp
 
 
 class LoginScreen(private val game: BeatFeetGame): ScreenAdapter() {
@@ -44,13 +40,16 @@ class LoginScreen(private val game: BeatFeetGame): ScreenAdapter() {
 
 
         val buttonTable = Table()
-        val login = makeTextField(strings["login-menu.text.login"], game.assets.getSkin())
-        val email = makeTextField(strings["login-menu.text.email"], game.assets.getSkin())
-        val password = makeTextField(strings["login-menu.text.password"], game.assets.getSkin())
+        val login = makeTextField(strings["login-menu.text.login"], game.assets.getSkin(), 500f)
+        val email = makeTextField(strings["login-menu.text.email"], game.assets.getSkin(), 500f)
+        val password = makeTextField(strings["login-menu.text.password"], game.assets.getSkin(), 500f)
         var isReg = makecheck(strings["login-menu.check.isRegister"], game.assets.getSkin())
-        val forgorButton = makeButton(strings["login-menu.btn.forgor"], styles) { game.showShipSelectMenu() }
+        val forgorButton = makeButton(strings["login-menu.btn.forgor"], styles) { iForgor(email.text.toString()) }
         val loginButton = makeLargeButton("              " + strings["login-menu.btn.login"]+"              ", styles) {
-            gettest(login.text.toString(), password.text.toString())}
+           if (!isReg.isChecked)
+               signIN(login.text.toString(), password.text.toString())
+           else
+               regInit(login.text.toString(), email.text.toString(), password.text.toString())}
 
 
 
@@ -124,15 +123,14 @@ class LoginScreen(private val game: BeatFeetGame): ScreenAdapter() {
     }
 
     override fun render(delta: Float) {
-
         Gdx.gl.glClearColor(0f, 0f, 0f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
         stage.act(delta)
         stage.draw()
     }
 
-    private fun gettest(login:String, password:String) {
-        RetrofitClient.instance?.getMyApi()?.getTest2(login, password)
+    private fun signIN(login:String , password:String) {
+        RetrofitClient.instance?.getMyApi()?.loginUser(login, password)
             ?.enqueue(object : Callback<Message?> {
                 override fun onResponse(call: Call<Message?> , response: Response<Message?>) {
                     if (response.isSuccessful) {
@@ -140,17 +138,47 @@ class LoginScreen(private val game: BeatFeetGame): ScreenAdapter() {
                         game.prefs.flush()
                         game.showMenu()
                     } else {
-//                        Toast("Логин или пароль неверен")
-////                        Toast.makeText(applicationContext, "Логин или пароль неверен", Toast.LENGTH_LONG)
-////                            .show()
+                        game.toastLong("Incorrect Login");
                     }
                 }
 
                 override fun onFailure(call: Call<Message?> , t: Throwable) {
-                    var taa:Int = 0
-                    taa+=1
-//                    Toast.makeText(applicationContext, "An error has occured", Toast.LENGTH_LONG)
-//                        .show()
+                    game.toastLong("Check Internet Connection");
+                }
+            })
+    }
+
+    private fun iForgor(email:String) {
+        RetrofitClient.instance?.getMyApi()?.resetPass(email)
+            ?.enqueue(object : Callback<Message?> {
+                override fun onResponse(call: Call<Message?>, response: Response<Message?>) {
+                    if (response.isSuccessful) {
+                        game.toastLong("New Password Has Been Sent To Your Email");
+                    } else {
+                        game.toastLong("Incorrect Email");
+                    }
+                }
+
+                override fun onFailure(call: Call<Message?>, t: Throwable) {
+                    game.toastLong("Check Internet Connection");
+                }
+            })
+    }
+
+    private fun regInit(login:String, email:String, password:String){
+            RetrofitClient.instance?.getMyApi()?.registerUser(RegModel(null, login, email, password))?.enqueue(object : Callback<Message?> {
+                override fun onResponse(call: Call<Message?>, response: Response<Message?>) {
+                    if (response.isSuccessful) {
+                        game.prefs.putString("login",response.body()?.id.toString())
+                        game.prefs.flush()
+                        game.showMenu()
+                    } else {
+                        game.toastLong("Incorrect Data");
+                    }
+                }
+
+                override fun onFailure(call: Call<Message?>, t: Throwable) {
+                    game.toastLong("Check Internet Connection");
                 }
             })
     }

@@ -1,6 +1,7 @@
 package com.serwylo.beatgame.screens
 
 import com.badlogic.gdx.*
+import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.OrthographicCamera
@@ -9,6 +10,7 @@ import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane
+import com.example.restapiidemo.network.RetrofitClient
 import com.serwylo.beatgame.Assets
 import com.serwylo.beatgame.BeatFeetGame
 import com.serwylo.beatgame.Globals
@@ -26,8 +28,13 @@ import com.serwylo.beatgame.levels.achievements.loadAchievementsForLevel
 import com.serwylo.beatgame.levels.achievements.saveAchievements
 import com.serwylo.beatgame.levels.loadHighScore
 import com.serwylo.beatgame.levels.saveHighScore
+import com.serwylo.beatgame.network.data.LeaderboardModel
+import com.serwylo.beatgame.network.data.Message
 import com.serwylo.beatgame.ships.Ships
 import com.serwylo.beatgame.ui.makeStage
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import kotlin.math.sin
 
 
@@ -655,6 +662,27 @@ class PlatformGameScreen(
         val existingHighScore: HighScore = loadHighScore(world.level())
         val newHighScore: HighScore = saveHighScore(world.level(), score)
 
+        try {
+            var trackID = 0
+            RetrofitClient.instance?.getMyApi()?.getTrackID(world.musicFile.nameWithoutExtension())?.enqueue(object :
+                Callback<Message?> {
+                override fun onResponse(call: Call<Message?> , response: Response<Message?>) {
+                    if (response.isSuccessful) {
+                        trackID = response.body()?.id!!
+                        saveRecord(trackID, game.prefs.getString("login").toInt(), score.getPoints())
+                    } else {
+                        //game.toastLong("Incorrect Data");
+                    }
+                }
+
+                override fun onFailure(call: Call<Message?> , t: Throwable) {
+                    game.toastLong("Check Internet Connection To Save Your Data");
+                }
+            })
+        } catch (e:Error){
+
+        }
+
         newAchievements = allAchievements.filter {
             it.isAchieved(score, newHighScore) && existingAchievements.all { existing -> existing.id != it.id }
         }
@@ -683,6 +711,24 @@ class PlatformGameScreen(
         scrollView.setFillParent(true)
         scrollView.setScrollingDisabled(true, false)
         stage.addActor(scrollView)
+    }
+
+    private fun saveRecord(trackID: Int, playerID:Int, score:Int){
+        var record = LeaderboardModel(trackID, playerID, score)
+        RetrofitClient.instance?.getMyApi()?.createRecord(record)?.enqueue(object :
+            Callback<Message?> {
+            override fun onResponse(call: Call<Message?> , response: Response<Message?>) {
+                if (response.isSuccessful) {
+                    //game.toastLong("yaaay");
+                } else {
+                    //game.toastLong("Incorrect Data");
+                }
+            }
+
+            override fun onFailure(call: Call<Message?> , t: Throwable) {
+                //game.toastLong("Check Internet Connection To Save Your Data");
+            }
+        })
     }
 
     companion object {

@@ -42,13 +42,13 @@ class ExplainCustomSongsScreen(private val game: BeatFeetGame): ScreenAdapter() 
             row()
             add(description).prefWidth(Value.percentWidth(1f)).pad(UI_SPACE * 2)
 
-            val path = Label(mp3File.absolutePath, styles.label.small).apply {
+            val path = Label(mp3File.absolutePath, styles.label.medium).apply {
                 setAlignment(Align.center)
                 wrap = true
             }
 
             row()
-            add(path).center().pad(UI_SPACE * 2)
+            add(path).prefWidth(Value.percentWidth(1f)).pad(UI_SPACE * 2)
 
             val copied = Label("Copied to clipboard!", styles.label.small).apply {
                 setAlignment(Align.center)
